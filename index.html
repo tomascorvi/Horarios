@@ -138,49 +138,60 @@
         });
     }
 
-    function generarHorario() {
-        if(empleadas.length === 0) return alert("Carga al menos una empleada");
-        
-        let horario = { Devoto: {}, Ramos: {} };
-        empleadas.forEach(e => e.horasAsignadas = 0);
+   function generarHorario() {
+    if(empleadas.length === 0) return alert("Carga al menos una empleada");
+    
+    let horario = { Devoto: {}, Ramos: {} };
+    // Reiniciamos el contador de horas asignadas para el nuevo cálculo
+    empleadas.forEach(e => e.horasAsignadas = 0);
 
-        dias.forEach(dia => {
-            ["Devoto", "Ramos"].forEach(local => {
-                
-                if (local === "Ramos" && dia === "Dom") {
-            horario[local][dia] = { Mañana: ["CERRADO"], Tarde: ["CERRADO"] };
-            return; // Salta a la siguiente iteración (no asigna gente)
-        }
-                horario[local][dia] = { Mañana: [], Tarde: [] };
-                
-                ["Mañana", "Tarde"].forEach(turno => {
-                    // Excepción Devoto Mañana Lun-Mie
-                    let necesitaVendedor = true;
-                    if(local === "Devoto" && turno === "Mañana" && ["Lun", "Mar", "Mie"].includes(dia)) necesitaVendedor = false;
+    dias.forEach(dia => {
+        ["Devoto", "Ramos"].forEach(local => {
+            
+            // --- REGLA: RAMOS CERRADO LOS DOMINGOS ---
+            if (local === "Ramos" && dia === "Dom") {
+                horario[local][dia] = { Mañana: ["CERRADO"], Tarde: ["CERRADO"] };
+                return; // Pasa al siguiente local o día
+            }
 
-                    // 1. Buscar Encargado
-                    let enc = buscarMejorCandidata(dia, turno, local, "Encargado");
-                    if(enc) {
-                        horario[local][dia][turno].push(enc.nombre);
-                        sumarHoras(enc, local, dia, turno);
+            horario[local][dia] = { Mañana: [], Tarde: [] };
+            
+            ["Mañana", "Tarde"].forEach(turno => {
+                // Excepción Devoto Mañana Lun-Mie: Solo encargado, no necesita vendedor
+                let necesitaVendedor = true;
+                if(local === "Devoto" && turno === "Mañana" && ["Lun", "Mar", "Mie"].includes(dia)) {
+                    necesitaVendedor = false;
+                }
+
+                // 1. BUSCAR ENCARGADO
+                let enc = buscarMejorCandidata(dia, turno, local, "Encargado");
+                if(enc) {
+                    horario[local][dia][turno].push(enc.nombre);
+                    sumarHoras(enc, local, dia, turno);
+                }
+
+                // 2. BUSCAR VENDEDOR
+                if(necesitaVendedor) {
+                    // Buscamos un vendedor, pero que no sea la misma persona que ya pusimos como encargado
+                    let vend = buscarMejorCandidata(dia, turno, local, "Vendedor", enc ? enc.nombre : null);
+                    
+                    // Si no hay vendedores disponibles, intentamos con otro encargado que tenga horas libres
+                    if(!vend) {
+                        vend = buscarMejorCandidata(dia, turno, local, "Encargado", enc ? enc.nombre : null);
                     }
-
-                    // 2. Buscar Vendedor
-                    if(necesitaVendedor) {
-                        let vend = buscarMejorCandidata(dia, turno, local, "Vendedor", enc);
-                        if(!vend) vend = buscarMejorCandidata(dia, turno, local, "Encargado", enc); // Encargado puede ser vendedor
-                        if(vend) {
-                            horario[local][dia][turno].push(vend.nombre);
-                            sumarHoras(vend, local, dia, turno);
-                        }
+                    
+                    if(vend) {
+                        horario[local][dia][turno].push(vend.nombre);
+                        sumarHoras(vend, local, dia, turno);
                     }
-                });
+                }
             });
         });
+    });
 
-        ultimoHorarioGenerado = horario;
-        dibujarTabla(horario);
-    }
+    ultimoHorarioGenerado = horario;
+    dibujarTabla(horario);
+}
 
     function buscarMejorCandidata(dia, turno, local, rol, yaAsignada) {
         let posibles = empleadas.filter(e => {
