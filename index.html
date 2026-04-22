@@ -146,6 +146,11 @@
 
         dias.forEach(dia => {
             ["Devoto", "Ramos"].forEach(local => {
+                
+                if (local === "Ramos" && dia === "Dom") {
+            horario[local][dia] = { Mañana: ["CERRADO"], Tarde: ["CERRADO"] };
+            return; // Salta a la siguiente iteración (no asigna gente)
+        }
                 horario[local][dia] = { Mañana: [], Tarde: [] };
                 
                 ["Mañana", "Tarde"].forEach(turno => {
